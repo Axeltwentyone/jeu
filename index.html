@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Babi — Vis ta vie à Abidjan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Anton&family=Permanent+Marker&family=Oswald:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="game"></div>
+
+<!-- Chargement -->
+<div id="loading" class="screen">
+  <div class="load-inner">
+    <div class="brand"><span class="b1">BABI</span><span class="b2">Vis ta vie à Abidjan</span></div>
+    <div class="load-bar"><i id="loadFill"></i></div>
+    <div class="load-txt"><span id="loadLabel">Préparation…</span><span id="loadPct">0%</span></div>
+    <p class="tip" id="loadTip"></p>
+    <div class="load-error" id="loadError" hidden></div>
+  </div>
+</div>
+
+<!-- Menu principal -->
+<div id="menuScreen" class="screen" hidden>
+  <div class="menu-panel">
+    <div class="brand"><span class="b1">BABI</span><span class="b2">Marcory · rue de la Lagune · Abidjan</span></div>
+    <div id="menuMain">
+      <button class="btn primary" id="btnNew">Nouvelle vie</button>
+      <button class="btn" id="btnContinue" hidden>Continuer</button>
+      <button class="btn" id="btnSettings">Graphismes</button>
+      <p class="pitch">Un petit studio, 12 000 FCFA en poche et un entretien d'embauche chez Babi Digital. Deviens développeur·se web, paie ton loyer, profite de Marcory… et construis ta vie.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Création / modification du personnage -->
+<div id="creator" hidden>
+  <div class="cr-panel">
+    <div class="cr-head"><div class="cr-title" id="crTitle">Crée ton personnage</div><div class="cr-sub" id="crSub"></div></div>
+    <div class="cr-tabs" id="crTabs"></div>
+    <div class="cr-body" id="crBody"></div>
+    <div class="cr-foot"><button class="btn" id="crBack">Retour</button><button class="btn" id="crRandom">Aléatoire</button><button class="btn primary" id="crOk">Confirmer</button></div>
+  </div>
+  <div class="cr-view">
+    <div class="cr-views" id="crViews"><button data-v="face">Visage</button><button data-v="bust">Buste</button><button data-v="full" class="on">Entier</button><span class="cr-sep"></span><button data-a="0" class="on" title="Pose de repos">Repos</button><button data-a="1" title="Aperçu en marche">Marche</button><button data-a="2" title="Aperçu en course">Course</button></div>
+    <div class="cr-rot"><button id="crRotL">⟲</button><span>Glisser pour tourner · molette pour zoomer</span><button id="crRotR">⟳</button></div>
+  </div>
+</div>
+
+<!-- Réglages -->
+<div id="settings" class="screen dim" hidden>
+  <div class="menu-panel narrow">
+    <h2>Graphismes</h2>
+    <div class="field"><label>Qualité</label>
+      <div class="seg four" id="qSeg"><button data-q="low">Basse</button><button data-q="medium">Moyenne</button><button data-q="high">Haute</button><button data-q="ultra">Ultra</button></div>
+    </div>
+    <p class="hint" id="qHint"></p>
+    <div class="field"><label>Son</label>
+      <div class="seg" id="sndSeg"><button data-s="1" class="on">Activé</button><button data-s="0">Coupé</button></div>
+    </div>
+    <div class="fps" id="fpsLine"></div>
+    <button class="btn primary" id="btnSettingsClose">Fermer</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" hidden>
+  <div id="topLeft" class="panel">
+    <div class="time"><span id="hClock"></span><span id="hDay"></span></div>
+    <div class="where" id="hWhere"></div>
+  </div>
+  <div id="topRight" class="panel">
+    <div class="money" id="hMoney"></div>
+    <div class="mini"><span>Énergie</span><div class="nbar"><i id="hEnergy"></i></div></div>
+    <div class="mini"><span>Faim</span><div class="nbar"><i id="hFood"></i></div></div>
+  </div>
+  <div id="objective" class="panel">
+    <div class="obj-k">Objectif</div>
+    <div class="obj-t" id="objTitle"></div>
+    <div class="obj-d" id="objDesc"></div>
+  </div>
+  <div id="marker" hidden><div class="mk-dot"></div><div class="mk-txt" id="markerTxt"></div></div>
+  <div id="prompt" hidden><kbd>E</kbd><span id="promptTxt"></span></div>
+  <div id="actionMenu" class="panel" hidden>
+    <div class="am-head"><div><div class="am-title" id="amTitle"></div><div class="am-sub" id="amSub"></div></div><button class="x" id="amClose" title="Fermer (Échap)">✕</button></div>
+    <div class="am-list" id="amList"></div>
+    <div class="am-foot">Échap pour fermer</div>
+  </div>
+  <div id="progress" class="panel" hidden>
+    <div class="pg-row"><span id="pgLabel"></span><button class="link" id="pgCancel">Arrêter</button></div>
+    <div class="pg-bar"><i id="pgFill"></i></div>
+  </div>
+  <div id="toasts"></div>
+  <button id="phoneBtn" title="Téléphone (T)"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="6" y="2" width="12" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="18" r="1.2" fill="currentColor"/></svg><span class="badge" id="phoneBadge" hidden></span></button>
+  <div id="controlsHint">ZQSD/WASD marcher · Maj courir · souris : caméra · E interagir · T téléphone · Échap menu</div>
+  <div id="labels"></div>
+</div>
+
+<!-- Téléphone -->
+<div id="phone" hidden>
+  <div class="ph-body">
+    <div class="ph-status"><span id="phClock"></span><span>Orange-CI ▂▄▆ 82%</span></div>
+    <div class="ph-screen" id="phScreen"></div>
+    <div class="ph-nav"><button id="phBack">‹ Retour</button><button id="phHome">●</button><button id="phClose">Fermer ✕</button></div>
+  </div>
+</div>
+
+<!-- Éditeur de code (missions) -->
+<div id="editor" hidden>
+  <div class="ed-win">
+    <div class="ed-top"><span class="dots"><i></i><i></i><i></i></span><span id="edTitle"></span><span class="ed-time" id="edTime"></span></div>
+    <div class="ed-main">
+      <aside class="ed-side">
+        <div class="ed-k">Mission</div>
+        <div class="ed-mission" id="edMission"></div>
+        <div class="ed-k">Tickets</div>
+        <div id="edTasks"></div>
+        <div class="ed-energy">Énergie <div class="nbar"><i id="edEnergy"></i></div></div>
+      </aside>
+      <section class="ed-code">
+        <div class="ed-tabs" id="edTab"></div>
+        <div class="ed-goal" id="edGoal"></div>
+        <div class="ed-lines" id="edLines"></div>
+        <div class="ed-fix" id="edFix" hidden></div>
+        <div class="ed-term" id="edTerm"></div>
+      </section>
+    </div>
+    <div class="ed-bottom">
+      <button class="ebtn" id="edHint">Indice (−20 min)</button>
+      <span class="sp"></span>
+      <button class="ebtn" id="edPause">Faire une pause</button>
+      <button class="ebtn primary" id="edTest" disabled>Lancer les tests</button>
+      <button class="ebtn primary" id="edPush" hidden>Envoyer le code (git push)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pause -->
+<div id="pause" class="screen dim" hidden>
+  <div class="menu-panel narrow">
+    <h2>Pause</h2>
+    <div class="field"><label>Vitesse du temps</label>
+      <div class="seg" id="speedSeg"><button data-s="1" class="on">Normale</button><button data-s="3">Rapide ×3</button><button data-s="8">Très rapide ×8</button></div>
+    </div>
+    <button class="btn primary" id="btnResume">Reprendre</button>
+    <button class="btn" id="btnPauseSettings">Graphismes</button>
+    <button class="btn" id="btnQuit">Sauvegarder et quitter</button>
+  </div>
+</div>
+
+<!-- Victoire -->
+<div id="victory" class="screen dim" hidden>
+  <div class="menu-panel narrow center">
+    <div class="v-kicker">Le grand rêve</div>
+    <h2 class="v-title">Ton maquis est ouvert !</h2>
+    <p id="victoryTxt"></p>
+    <button class="btn primary" id="btnKeepPlaying">Continuer à jouer</button>
+  </div>
+</div>
+
+<div id="fade"><div id="fadeTxt"></div></div>
+
+<div id="touch" hidden>
+  <div id="joy"><div id="joyKnob"></div></div>
+  <button id="touchE">E</button>
+  <button id="touchRun">Courir</button>
+  <button id="touchPhone">Tél.</button>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

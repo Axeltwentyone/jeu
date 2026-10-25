@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Babi — vérification des personnages</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0;background:#1a1a1c;color:#ddd;font:13px system-ui}#ui{position:fixed;left:8px;top:8px;background:#000a;padding:8px;border-radius:8px;max-width:300px}button{margin:2px;padding:4px 7px;background:#333;color:#ddd;border:0;border-radius:4px}button.on{background:#e8701b;color:#000}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body><div id="ui"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const q = new URLSearchParams(location.search), sex = q.get('s') || 'm';
+const R = new THREE.WebGLRenderer({ antialias: true }); R.setSize(innerWidth, innerHeight); R.setPixelRatio(devicePixelRatio); R.toneMapping = THREE.ACESFilmicToneMapping; R.shadowMap.enabled = true;
+document.body.appendChild(R.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#2a2a2e');
+scene.environment = new THREE.PMREMGenerator(R).fromScene(new RoomEnvironment(), 0.04).texture;
+const sun = new THREE.DirectionalLight('#fff', 2.2); sun.position.set(2, 4, 3); scene.add(sun);
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 50); cam.position.set(0, 1.5, 3.2);
+const ctl = new OrbitControls(cam, R.domElement); ctl.target.set(0, 1.1, 0); ctl.update();
+window.V = { scene, cam, ctl, R };
+const gltf = await new GLTFLoader().loadAsync(`../assets/characters/babi_${sex}.glb?${Date.now()}`);
+const root = gltf.scene; scene.add(root); V.root = root;
+const meshes = {}; root.traverse(o => { if (o.isMesh) { meshes[o.name] = o; o.castShadow = true; o.frustumCulled = false; } });
+V.meshes = meshes;
+// corps : cache la peau sous les vêtements portés (attribut _hidebits, ordre donné par le .json)
+const meta = await (await fetch(`../assets/characters/babi_${sex}.json?${Date.now()}`)).json();
+const body = meshes.Body, uWorn = { value: 0 };
+body.material.onBeforeCompile = sh => {
+  sh.uniforms.uWorn = uWorn;
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float _hidebits; uniform int uWorn; flat varying int vHide;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHide = int(_hidebits + 0.5) & uWorn;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nflat varying int vHide;').replace('void main() {', 'void main() {\nif (vHide != 0) discard;');
+};
+const groups = { G: Object.keys(meshes).filter(n => n.startsWith('G_')), H: Object.keys(meshes).filter(n => n.startsWith('H_')) };
+const worn = new Set(q.get('w') ? q.get('w').split(',').map(x => 'G_' + x) : []);
+let hair = q.get('h') ? 'H_' + q.get('h') : groups.H[0];
+function refresh() {
+  for (const n of groups.G) meshes[n].visible = worn.has(n);
+  for (const n of groups.H) meshes[n].visible = n === hair;
+  uWorn.value = meta.hideBits.reduce((m, g, i) => m | (worn.has('G_' + g) ? 1 << i : 0), 0);
+  ui.innerHTML = '<b>Vêtements</b><br>' + groups.G.map(n => `<button class="${worn.has(n) ? 'on' : ''}" data-g="${n}">${n.slice(2)}</button>`).join('') +
+    '<br><b>Cheveux</b><br>' + groups.H.map(n => `<button class="${n === hair ? 'on' : ''}" data-h="${n}">${n.slice(2)}</button>`).join('');
+  ui.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { worn.has(b.dataset.g) ? worn.delete(b.dataset.g) : worn.add(b.dataset.g); refresh(); });
+  ui.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { hair = b.dataset.h; refresh(); });
+}
+V.refresh = refresh; V.worn = worn; V.setHair = h => { hair = 'H_' + h; refresh(); };
+refresh();
+console.log('meshes', Object.keys(meshes).join(','), 'attrs', Object.keys(body.geometry.attributes).join(','));
+R.setAnimationLoop(() => R.render(scene, cam));
+</script></body></html>
